@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Microphone access: Flash to JS</title>
+		<style>
+
+		</style>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+		<script>
+$(function() {
+	recorder = $('#recorderApp')[0];
+	recording = false;
+	allSamples = [];
+	
+	$action = $('#action');
+	$level = $('#level>div');
+	$player = $('#player');
+	
+	$action.click(function() {
+		if (!recording) {
+			recorder.recordStart();
+		} else {
+			recorder.recordStop();
+		}
+	});
+	
+	setTimeout(function() {
+		$action.removeAttr('disabled');
+		recorder.selectInput();
+		recorder.setDataCallback('dataCallback');
+		recorder.setStatusCallback('statusCallback');
+	}, 2000);
+});
+
+function statusCallback(status) {
+	if (status == 'record-start') {
+		$action.html('Stop');
+		recording = true;
+	} else if (status == 'record-stop') {
+		$action.html('Start');
+		recording = false;
+		
+		var uri = encodeAudio16bit(allSamples, 44100);
+		$player.attr('src', uri);
+	}
+}
+
+function dataCallback(samples) {
+	allSamples = allSamples.concat(samples);
+	$level.css({left: -200 + 200*recorder.getActivityLevel()/100});
+}
+
+function encodeAudio16bit(data, sampleRate) {
+	var n = data.length;
+	var integer = 0, i;
+	
+	// 16-bit mono WAVE header template
+	var header = "RIFF<##>WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00<##><##>\x02\x00\x10\x00data<##>";
+
+	// Helper to insert a 32-bit little endian int.
+	function insertLong(value) {
+		var bytes = "";
+		for (i = 0; i < 4; ++i) {
+			bytes += String.fromCharCode(value % 256);
+			value = Math.floor(value / 256);
+		}
+		header = header.replace('<##>', bytes);
+	}
+
+	// ChunkSize
+	insertLong(36 + n * 2);
+	
+	// SampleRate
+	insertLong(sampleRate);
+
+	// ByteRate
+	insertLong(sampleRate * 2);
+
+	// Subchunk2Size
+	insertLong(n * 2);
+	
+	// Output sound data
+	for (var i = 0; i < n; ++i) {
+		var sample = Math.round(Math.min(1, Math.max(-1, data[i])) * 32767);
+		if (sample < 0) {
+			sample += 65536; // 2's complement signed
+		}
+		header += String.fromCharCode(sample % 256);
+		header += String.fromCharCode(Math.floor(sample / 256));
+	}
+	
+	return 'data:audio/wav;base64,' + btoa(header);
+}
+		</script>
+		<style>
+body {
+	background: #AAA;
+	font-family: sans-serif;
+}
+
+object {
+	border: 1px solid #D88;
+}
+
+#wrap {
+	width: 400px;
+	margin: 100px auto;
+	padding: 20px;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(0, 0, 0, 0.2);
+	border-radius: 5px;
+	background: #FFF;
+}
+
+#controls > * {
+	float: left;
+	margin: 0 5px 0 0;
+}
+
+#level {
+	overflow: hidden;
+	position: relative;
+	display: inline-block;
+	height: 20px;
+	width: 200px;
+	box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.3);
+	border-radius: 3px;
+	border: 1px solid #AAA;
+}
+	#level > div {
+		position: relative;
+		width: 100%; height: 100%;
+		left: -100%;
+		box-shadow: inset 0 -2px 3px rgba(255, 255, 255, 0.5);
+		background: -webkit-gradient(linear, 0 0, 100% 0, color-stop(0, #C00), color-stop(0.5, #CC0), color-stop(1, #0C0));
+	}
+		</style>
+	</head>
+	<body>
+		<div id="wrap">
+			<object type="application/x-shockwave-flash" id="recorderApp" name="recorderApp" data="recorder.swf" width="215" height="138"></object>
+			(&lt;- Flash object)
+			<br />
+			<p id="controls">
+				<button id="action" disabled>Record</button>
+				<div id="level"><div></div></div>
+			</p>
+			<audio id="player" controls></audio>
+		</div>
+	</body>
+</html>
