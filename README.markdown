@@ -32,7 +32,7 @@ Requests the client for audio input permission:
 
 	askPermission():void
 
-_The following methods must be called -after- having selected an input device with selectInput()_
+*The following methods must be called -after- having selected an input device with selectInput()*
 
 Returns a boolean determining if the client has allowed access to the device:
 
