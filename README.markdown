@@ -2,6 +2,7 @@ Data passed to the dataCallback is in the form of an array of floats ranging bet
 Your callback will be called many times as the output buffer is filled and needs to flush.
 
 Flash object methods:
+---------------------
 
 Set the callback for status messages:
 
